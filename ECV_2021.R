@@ -1,7 +1,7 @@
 #ECV 2021 P!ensa
 
 library(haven)
-ECV_021 <- read_dta("Pedro/UC/COMERCIAL/Pr醕tica/P!ensa/Investigaci髇/ECV/BBDD/+ponderadores/BBDD - Calidad de Vida 2021 - Fundaci髇 Piensa.dta")
+ECV_021 <- read_dta("Pedro/UC/COMERCIAL/Pr谩ctica/P!ensa/Investigaci贸n/ECV/BBDD/+ponderadores/BBDD - Calidad de Vida 2021 - Fundaci贸n Piensa.dta")
 ECV_021 = ECV_021[-12]
 
 library(dplyr)
@@ -12,7 +12,7 @@ library(datasets)
 n = count(ECV_021)
 n
 
-#Variables Demogr醘icas
+#Variables Demogr谩ficas
 
 #sexo
 hombre = filter(ECV_021, A5==1)
@@ -115,7 +115,7 @@ s.otro.act = select(otro.act, PONDERAD)
 p_otro_act = sum(s.otro.act)/(n-act_nr)
 p_otro_act
 
-#nivel de ense馻nza
+#nivel de ense帽anza
 educ.nr = filter(ECV_021, Z2==99 | is.na(Z2))
 s.educ.nr = select(educ.nr, PONDERAD)
 educ_nr = sum(s.educ.nr)
@@ -133,7 +133,7 @@ p_superior = sum(s.superior)/(n-educ_nr)
 p_superior
 
 
-#nivel socioecon髆ico
+#nivel socioecon贸mico
 ing.nr = filter(ECV_021, E4==99 | is.na(E4))
 s.ing.nr = select(ing.nr, PONDERAD)
 ing_nr = sum(s.ing.nr)
@@ -147,9 +147,9 @@ s.c1 = select(c1, PONDERAD)
 p_c1 = sum(s.c1)/(n-ing_nr)
 p_c1
 
-#Indice de Percepci髇 de Calidad de Vida
+#Indice de Percepci贸n de Calidad de Vida
 
-#Regi髇 de Valpara韘o
+#Regi贸n de Valpara铆so
 #servicios para la vivienda
 basura.nr = filter(ECV_021, is.na(B1_1))
 viv.bas = filter(ECV_021, B1_1>=6)
@@ -277,7 +277,7 @@ sal_12 = p_s12*100
 
 ind_sal = (sal_1+sal_2+sal_3+sal_4+sal_5+sal_6+sal_7+sal_8+sal_9+sal_10+sal_11+sal_12)*1000/1200
 
-#servicios de edcuaci髇
+#servicios de edcuaci贸n
 
 e1.nr = filter(ECV_021, is.na(B10_1) | B10_1==99)
 s.e1.nr = select(e1.nr, PONDERAD)
@@ -345,4 +345,129 @@ educ_8 = p_e8*100
 
 ind_educ = (educ_1+educ_2+educ_3+educ_4+educ_5+educ_6+educ_7+educ_8)*1000/800
 
+#seguridad
+seg1.nr = filter(ECV_021, is.na(B11_1) | B11_1==98 | B11_1==99)
+s.seg1.nr = select(seg1.nr, PONDERAD)
+nr_seg1 = sum(s.seg1.nr)
+seg1 = filter(ECV_021, B11_1>=6 & B11_1!=99 & B11_1!=98)
+s.seg1 = select(seg1, PONDERAD)
+p_seg1 = sum(s.seg1)/(n-nr_seg1)
+seg_1 = p_seg1*100
 
+seg2.nr = filter(ECV_021, is.na(B11_2) | B11_2==98 | B11_2==99)
+s.seg2.nr = select(seg2.nr, PONDERAD)
+nr_seg2 = sum(s.seg2.nr)
+seg2 = filter(ECV_021, B11_2>=6 & B11_2!=99 & B11_2!=98)
+s.seg2 = select(seg2, PONDERAD)
+p_seg2 = sum(s.seg2)/(n-nr_seg2)
+seg_2 = p_seg2*100
+#nos saltamos a nivel pa铆s B11_3
+seg4.nr = filter(ECV_021, is.na(B11_4) | B11_4==98 | B11_4==99)
+s.seg4.nr = select(seg4.nr, PONDERAD)
+nr_seg4 = sum(s.seg4.nr)
+seg4 = filter(ECV_021, B11_4>=6 & B11_4!=99 & B11_4!=98)
+s.seg4 = select(seg4, PONDERAD)
+p_seg4 = sum(s.seg4)/(n-nr_seg4)
+seg_4 = p_seg4*100
+
+seg5.nr = filter(ECV_021, is.na(B11_5) | B11_5==98 | B11_5==99)
+s.seg5.nr = select(seg5.nr, PONDERAD)
+nr_seg5 = sum(s.seg5.nr)
+seg5 = filter(ECV_021, B11_5>=6 & B11_5!=99 & B11_5!=98)
+s.seg5 = select(seg5, PONDERAD)
+p_seg5 = sum(s.seg5)/(n-nr_seg5)
+seg_5 = p_seg5*100
+
+seg6.nr = filter(ECV_021, is.na(B11_6) | B11_6==98 | B11_6==99)
+s.seg6.nr = select(seg6.nr, PONDERAD)
+nr_seg6 = sum(s.seg6.nr)
+seg6 = filter(ECV_021, B11_6>=6 & B11_6!=99 & B11_6!=98)
+s.seg6 = select(seg6, PONDERAD)
+p_seg6 = sum(s.seg6)/(n-nr_seg6)
+seg_6 = p_seg6*100
+
+seg7.nr = filter(ECV_021, is.na(B11_7) | B11_7==98 | B11_7==99)
+s.seg7.nr = select(seg7.nr, PONDERAD)
+nr_seg7 = sum(s.seg7.nr)
+seg7 = filter(ECV_021, B11_7>=6 & B11_7!=99 & B11_7!=98)
+s.seg7 = select(seg7, PONDERAD)
+p_seg7 = sum(s.seg7)/(n-nr_seg7)
+seg_7 = p_seg7*100
+
+seg8.nr = filter(ECV_021, is.na(B11_8) | B11_8==98 | B11_8==99)
+s.seg8.nr = select(seg8.nr, PONDERAD)
+nr_seg8 = sum(s.seg8.nr)
+seg8 = filter(ECV_021, B11_8>=6 & B11_8!=99 & B11_8!=98)
+s.seg8 = select(seg8, PONDERAD)
+p_seg8 = sum(s.seg8)/(n-nr_seg8)
+seg_8 = p_seg8*100
+
+seg9.nr = filter(ECV_021, is.na(B11_9) | B11_9==98 | B11_9==99)
+s.seg9.nr = select(seg9.nr, PONDERAD)
+nr_seg9 = sum(s.seg9.nr)
+seg9 = filter(ECV_021, B11_9>=6 & B11_9!=99 & B11_9!=98)
+s.seg9 = select(seg9, PONDERAD)
+p_seg9 = sum(s.seg9)/(n-nr_seg9)
+seg_9 = p_seg9*100
+
+seg10.nr = filter(ECV_021, is.na(B11_10) | B11_10==98 | B11_10==99)
+s.seg10.nr = select(seg10.nr, PONDERAD)
+nr_seg10 = sum(s.seg10.nr)
+seg10 = filter(ECV_021, B11_10>=6 & B11_10!=99 & B11_10!=98)
+s.seg10 = select(seg10, PONDERAD)
+p_seg10 = sum(s.seg10)/(n-nr_seg10)
+seg_10 = p_seg10*100
+
+seg11.nr = filter(ECV_021, is.na(B11_11) | B11_11==98 | B11_11==99)
+s.seg11.nr = select(seg11.nr, PONDERAD)
+nr_seg11 = sum(s.seg11.nr)
+seg11 = filter(ECV_021, B11_11>=6 & B11_11!=99 & B11_11!=98)
+s.seg11 = select(seg11, PONDERAD)
+p_seg11 = sum(s.seg11)/(n-nr_seg11)
+seg_11 = p_seg11*100
+
+seg12.nr = filter(ECV_021, is.na(B11_12) | B11_12==98 | B11_12==99)
+s.seg12.nr = select(seg12.nr, PONDERAD)
+nr_seg12 = sum(s.seg12.nr)
+seg12 = filter(ECV_021, B11_12>=6 & B11_12!=99 & B11_12!=98)
+s.seg12 = select(seg12, PONDERAD)
+p_seg12 = sum(s.seg12)/(n-nr_seg12)
+seg_12 = p_seg12*100
+
+seg13.nr = filter(ECV_021, is.na(B11_13) | B11_13==98 | B11_13==99)
+s.seg13.nr = select(seg13.nr, PONDERAD)
+nr_seg13 = sum(s.seg13.nr)
+seg13 = filter(ECV_021, B11_13>=6 & B11_13!=99 & B11_13!=98)
+s.seg13 = select(seg13, PONDERAD)
+p_seg13 = sum(s.seg13)/(n-nr_seg13)
+seg_13 = p_seg13*100
+
+seg14.nr = filter(ECV_021, is.na(B11_14) | B11_14==98 | B11_14==99)
+s.seg14.nr = select(seg14.nr, PONDERAD)
+nr_seg14 = sum(s.seg14.nr)
+seg14 = filter(ECV_021, B11_14>=6 & B11_14!=99 & B11_14!=98)
+s.seg14 = select(seg14, PONDERAD)
+p_seg14 = sum(s.seg14)/(n-nr_seg14)
+seg_14 = p_seg14*100
+
+seg15.nr = filter(ECV_021, is.na(B11_15) | B11_15==98 | B11_15==99)
+s.seg15.nr = select(seg15.nr, PONDERAD)
+nr_seg15 = sum(s.seg15.nr)
+seg15 = filter(ECV_021, B11_15>=6 & B11_15!=99 & B11_15!=98)
+s.seg15 = select(seg15, PONDERAD)
+p_seg15 = sum(s.seg15)/(n-nr_seg15)
+seg_15 = p_seg15*100
+
+seg16.nr = filter(ECV_021, is.na(B11_16) | B11_16==98 | B11_16==99)
+s.seg16.nr = select(seg16.nr, PONDERAD)
+nr_seg16 = sum(s.seg16.nr)
+seg16 = filter(ECV_021, B11_16>=6 & B11_16!=99 & B11_16!=98)
+s.seg16 = select(seg16, PONDERAD)
+p_seg16 = sum(s.seg16)/(n-nr_seg16)
+seg_16 = p_seg16*100
+
+ind_seg = (seg_1+seg_2+seg_4+seg_5+seg_6
+           +seg_7+seg_8+seg_9+seg_10+seg_11
+           +seg_12+seg_13+seg_14+seg_15+seg_16)*1000/1500
+
+#sugerencias para mejorar la seguridad de los barrios
