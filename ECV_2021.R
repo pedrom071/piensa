@@ -877,3 +877,139 @@ ind_tr= (tr1+tr2+tr3+tr4+
 #congestión
 
 #satisfacción con la vida
+
+vida1.nr = filter(ECV_021, is.na(D2_1) | D2_1==99)
+s.vida1.nr = select(vida1.nr, PONDERAD)
+s.vida1.nr = rbind(s.vida1.nr, 0)
+nr_vida1 = sum(s.vida1.nr)
+vida1 = filter(ECV_021, D2_1==6 | D2_1==7)
+s.vida1 = select(vida1, PONDERAD)
+p_vida1 = sum(s.vida1)/(n-nr_vida1)
+vida1 = p_vida1*100
+
+vida2.nr = filter(ECV_021, is.na(D2_2) | D2_2==99)
+s.vida2.nr = select(vida2.nr, PONDERAD)
+s.vida2.nr = rbind(s.vida2.nr, 0)
+nr_vida2 = sum(s.vida2.nr)
+vida2 = filter(ECV_021, D2_2==6 | D2_2==7)
+s.vida2 = select(vida2, PONDERAD)
+p_vida2 = sum(s.vida2)/(n-nr_vida2)
+vida2 = p_vida2*100
+
+vida3.nr = filter(ECV_021, is.na(D2_3) | D2_3==99)
+s.vida3.nr = select(vida3.nr, PONDERAD)
+s.vida3.nr = rbind(s.vida3.nr, 0)
+nr_vida3 = sum(s.vida3.nr)
+vida3 = filter(ECV_021, D2_3==6 | D2_3==7)
+s.vida3 = select(vida3, PONDERAD)
+p_vida3 = sum(s.vida3)/(n-nr_vida3)
+vida3 = p_vida3*100
+
+vida4.nr = filter(ECV_021, is.na(D2_4) | D2_4==99)
+s.vida4.nr = select(vida4.nr, PONDERAD)
+s.vida4.nr = rbind(s.vida4.nr, 0)
+nr_vida4 = sum(s.vida4.nr)
+vida4 = filter(ECV_021, D2_4==6 | D2_4==7)
+s.vida4 = select(vida4, PONDERAD)
+p_vida4 = sum(s.vida4)/(n-nr_vida4)
+vida4 = p_vida4*100
+
+vida5.nr = filter(ECV_021, is.na(D2_5) | D2_5==99)
+s.vida5.nr = select(vida5.nr, PONDERAD)
+s.vida5.nr = rbind(s.vida5.nr, 0)
+nr_vida5 = sum(s.vida5.nr)
+vida5 = filter(ECV_021, D2_5==6 | D2_5==7)
+s.vida5 = select(vida5, PONDERAD)
+p_vida5 = sum(s.vida5)/(n-nr_vida5)
+vida5 = p_vida5*100
+
+ind_vida = (vida1+vida2+vida3+vida4+vida5)*1000/500
+
+#índice de percepción de calidad de vida (total ponderado)
+
+icv = (ind_viv+ind_trab+ind_vida+ind_educ+ind_seg+
+         ind_sal+ind_tr+ind_urb)/8
+
+#nivel de felicidad
+
+fel.nr = filter(ECV_021, is.na(D1) | D1==99)
+s.fel.nr = select(fel.nr, PONDERAD)
+nr_fel = sum(s.fel.nr)
+fel = c()
+
+for (i in (1:5)) {
+  f.fel = filter(ECV_021, D1==i)
+  s.fel = select(f.fel, PONDERAD)
+  p_fel = (sum(s.fel)/(n-nr_fel))*100
+  fel = rbind(fel, p_fel)
+  
+}
+
+si.fel = sum(fel[4,]+fel[5,])
+
+#cajas de compensación
+
+cc = c(1, 2 , 98, 99)
+comp = c()
+
+for (i in (cc)) {
+  f.comp = filter(ECV_021, Z11==i)
+  s.comp = select(f.comp, PONDERAD)
+  p_comp = (sum(s.comp)/(n))*100
+  comp = rbind(comp, p_comp)
+  
+}
+
+#menciones caja de compensación
+
+#primera mención
+cc1 = c(1, 2, 3 ,4, 5, 6 , 98, 99)
+cc1.na = filter(ECV_021, is.na(Z12_1))
+s.cc1.na = select(cc1.na, PONDERAD)
+na_cc1 = sum(s.cc1.na)
+comp1 = c()
+
+for (i in (cc1)) {
+  f.comp1 = filter(ECV_021, Z12_1==i)
+  s.comp1 = select(f.comp1, PONDERAD)
+  s.comp1 = rbind(s.comp1, 0)
+  p_comp1 = (sum(s.comp1)/(n-na_cc1))*100
+  comp1 = rbind(comp1, p_comp1)
+  
+}
+
+#percepciones caja de compensación
+
+#mejor caja de compensación
+cc2 = c(1, 2, 3 ,4, 5, 6 , 99)
+cc2.na = filter(ECV_021, is.na(Z14))
+s.cc2.na = select(cc2.na, PONDERAD)
+na_cc2 = sum(s.cc2.na)
+comp2 = c()
+
+for (i in (cc2)) {
+  f.comp2 = filter(ECV_021, Z14==i)
+  s.comp2 = select(f.comp2, PONDERAD)
+  s.comp2 = rbind(s.comp2, 0)
+  p_comp2 = (sum(s.comp2)/(n-na_cc2))*100
+  comp2 = rbind(comp2, p_comp2)
+  
+}
+
+
+#caja en la que participa
+cc3 = c(1, 2, 3 ,4, 5, 6 , 99)
+cc3.na = filter(ECV_021, is.na(Z15))
+s.cc3.na = select(cc3.na, PONDERAD)
+na_cc3 = sum(s.cc3.na)
+comp3 = c()
+
+for (i in (cc3)) {
+  f.comp3 = filter(ECV_021, Z15==i)
+  s.comp3 = select(f.comp3, PONDERAD)
+  s.comp3 = rbind(s.comp3, 0)
+  p_comp3 = (sum(s.comp3)/(n-na_cc3))*100
+  comp3 = rbind(comp3, p_comp3)
+  
+}
+
