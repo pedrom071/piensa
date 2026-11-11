@@ -474,6 +474,10 @@ function despachar_(p) {
     'admin.reservas': function () { return adminReservas_(p.e); },
     'admin.cancelar': function () { return cancelarReserva(p.token); },
     'admin.logo': function () { return adminSubirLogo_(p.nombre, p.tipo, p.base64); },
+    'admin.logoDatos': function () { return adminLogoDatos_(p.url); },
+    'admin.previaCorreo': function () { return adminPreviaCorreo_(p.instancia); },
+    'admin.eliminar': function () { return adminEliminar_(p.e, !!p.cancelarFuturas); },
+    'admin.cambiarClave': function () { return adminCambiarClave_(); },
   };
   try {
     const fn = acciones[p.accion];
@@ -589,6 +593,110 @@ function adminInstancia_(id) {
   };
 }
 
+/** Convierte el modelo del creador en los valores de la fila de Instancias (sin validar). */
+function filaDesdeModelo_(m) {
+  const tipo = ['meet', 'presencial', 'link'].indexOf(m.modalidad) >= 0 ? m.modalidad : 'presencial';
+  return {
+    id: String(m.id || '').trim().toLowerCase(),
+    activa: m.activa !== false,
+    titulo: limpiarTexto_(m.titulo, 140),
+    subtitulo: limpiarTexto_(m.subtitulo, 160),
+    descripcion: limpiarTexto_(m.descripcion, 1200, true),
+    duracion_min: Math.max(5, Math.round(num_(m.duracion, 30))),
+    pausa_min: Math.max(0, Math.round(num_(m.pausa, 0))),
+    modalidad: { meet: 'Google Meet', presencial: 'Presencial', link: 'Link propio' }[tipo],
+    lugar_o_link: tipo === 'meet' ? '' : limpiarTexto_(m.lugar, 300),
+    color_principal: color_(m.color1, '#1d2b4f'),
+    color_acento: color_(m.color2, '#e5533d'),
+    logo_piensa: limpiarTexto_(m.logoPiensa, 500),
+    logo_programa: limpiarTexto_(m.logoPrograma, 500),
+    logo_aliado: limpiarTexto_(m.logoAliado, 500),
+    logos_fondo: m.logosFondo === 'color' ? 'color' : 'blanco',
+    calendario: limpiarTexto_(m.calendario, 200),
+    responder_a: esCorreo_(String(m.responderA || '').trim()) ? String(m.responderA).trim() : '',
+    aviso_a: correos_(m.avisoA).join(', '),
+    invitados_fijos: correos_(m.invitadosFijos).join(', '),
+    clave_jurado: limpiarTexto_(m.claveJurado, 60).replace(/[^\w-]/g, '') || ('jurado-' + Utilities.getUuid().slice(0, 6)),
+    max_jurados: num_(m.maxJurados, 0) > 0 ? Math.round(num_(m.maxJurados, 0)) : '',
+    campos_extra: serializarCampos_(m.campos),
+    una_por_correo: m.unaPorCorreo !== false,
+    aviso_minimo_horas: Math.max(0, num_(m.avisoMinimoHoras, 0)),
+    respetar_ocupado: !!m.respetarOcupado,
+    mostrar_invitados: !!m.mostrarInvitados,
+    recordatorio_horas: Math.max(0, num_(m.recordatorioHoras, 0)),
+    mensaje_confirmacion: limpiarTexto_(m.mensaje, 1000, true),
+  };
+}
+
+/** Correo de confirmación de ejemplo, con la configuración que se está editando (sin guardar). */
+function adminPreviaCorreo_(m) {
+  const inst = normalizarInstancia_(filaDesdeModelo_(m || {}));
+  const h = ((m && m.horarios) || []).map(function (x) { return { fecha: normFecha_(x.fecha), desde: normHora_(x.desde) }; })
+    .filter(function (x) { return x.fecha && x.desde; }).sort(function (a, b) { return (a.fecha + a.desde) < (b.fecha + b.desde) ? -1 : 1; })[0];
+  const clave = h ? h.fecha + ' ' + h.desde : '2026-12-01 10:00';
+  const tipo = tipoModalidad_(inst);
+  const r = {
+    nombre: 'Francisca Lagos', correo: 'francisca@ejemplo.cl', clave: clave, hora: clave.slice(11),
+    termino: deMinutos_(aMinutos_(clave.slice(11)) + inst.duracion),
+    link: tipo === 'meet' ? 'https://meet.google.com/abc-defg-hij' : (tipo === 'link' ? inst.lugar : ''), token: 'ejemplo',
+  };
+  return { asunto: asuntoConfirmacion_(inst, r), html: htmlConfirmacion_(inst, r) };
+}
+
+/** Descarga una imagen desde un link (para ajustar logos que están en otros sitios). */
+function adminLogoDatos_(url) {
+  const u = urlImagen_(url);
+  if (!/^https:\/\//.test(u)) throw new Error('El link del logo no es válido.');
+  const resp = UrlFetchApp.fetch(u, { muteHttpExceptions: true, followRedirects: true });
+  if (resp.getResponseCode() !== 200) throw new Error('No pudimos descargar ese logo (error ' + resp.getResponseCode() + ').');
+  const blob = resp.getBlob();
+  const tipo = String(blob.getContentType() || '').split(';')[0];
+  if (!/^image\//.test(tipo)) throw new Error('Ese link no es una imagen.');
+  const bytes = blob.getBytes();
+  if (bytes.length > 4 * 1024 * 1024) throw new Error('El logo pesa más de 4 MB.');
+  return { tipo: tipo, base64: Utilities.base64Encode(bytes) };
+}
+
+/** Elimina una agenda: su fila, horarios, jurados y autorizados. Las reservas pasadas quedan como historial. */
+function adminEliminar_(id, cancelarFuturas) {
+  const inst = cargarInstancia_(id);
+  if (!inst) throw new Error('No encontré esa agenda.');
+  const ahora = ahora_().getTime();
+  const futuras = reservasDe_(inst.id).lista.filter(function (r) {
+    return /confirmada/i.test(r.estado) && fechaHora_(r.bloque).getTime() > ahora;
+  });
+  if (futuras.length && !cancelarFuturas) {
+    throw new Error('RESERVAS|Esta agenda tiene ' + futuras.length + (futuras.length === 1 ? ' hora reservada' : ' horas reservadas') + ' a futuro.');
+  }
+  const tablaRes = leerTabla_(HOJA.RESERVAS);
+  futuras.forEach(function (r) {
+    const fila = tablaRes.filas.filter(function (f) { return f._fila === r.fila; })[0];
+    if (fila && fila.token) intentar_(function () { cancelarReserva(fila.token); });
+  });
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) throw new Error('La planilla está ocupada. Intenta de nuevo en unos segundos.');
+  try {
+    reescribirDe_(HOJA.HORARIOS, inst.id, []);
+    reescribirDe_(HOJA.JURADOS, inst.id, []);
+    reescribirDe_(HOJA.AUTORIZADOS, inst.id, []);
+    reescribirDe_(HOJA.ASIGNACIONES, inst.id, []);
+    const tabla = leerTabla_(HOJA.INSTANCIAS);
+    const f = tabla.filas.filter(function (r) { return mismaInstancia_(r.id, inst.id); })[0];
+    if (f) tabla.hoja.deleteRow(f._fila);
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  return { id: inst.id, canceladas: futuras.length };
+}
+
+/** Genera una clave de administración nueva; la anterior deja de funcionar. */
+function adminCambiarClave_() {
+  const clave = Utilities.getUuid().replace(/-/g, '').slice(0, 20);
+  PropertiesService.getScriptProperties().setProperty('CLAVE_ADMIN', clave);
+  return { clave: clave };
+}
+
 /** Crea o actualiza una instancia desde el creador. */
 function adminGuardar_(m, nueva) {
   m = m || {};
@@ -620,36 +728,10 @@ function adminGuardar_(m, nueva) {
     if (nueva && existente) throw new Error('Ya existe una agenda con el código "' + id + '". Elige otro.');
     if (!nueva && !existente) throw new Error('No encontré la agenda "' + id + '".');
 
-    const valores = {
-      id: id,
-      activa: m.activa !== false,
-      titulo: titulo,
-      subtitulo: limpiarTexto_(m.subtitulo, 160),
-      descripcion: limpiarTexto_(m.descripcion, 1200, true),
-      duracion_min: duracion,
-      pausa_min: Math.max(0, Math.round(num_(m.pausa, 0))),
-      modalidad: { meet: 'Google Meet', presencial: 'Presencial', link: 'Link propio' }[tipo],
-      lugar_o_link: tipo === 'meet' ? '' : limpiarTexto_(m.lugar, 300),
-      color_principal: color_(m.color1, '#1d2b4f'),
-      color_acento: color_(m.color2, '#e5533d'),
-      logo_piensa: limpiarTexto_(m.logoPiensa, 500),
-      logo_programa: limpiarTexto_(m.logoPrograma, 500),
-      logo_aliado: limpiarTexto_(m.logoAliado, 500),
-      logos_fondo: m.logosFondo === 'color' ? 'color' : 'blanco',
-      calendario: limpiarTexto_(m.calendario, 200),
-      responder_a: esCorreo_(String(m.responderA || '').trim()) ? String(m.responderA).trim() : '',
-      aviso_a: correos_(m.avisoA).join(', '),
-      invitados_fijos: correos_(m.invitadosFijos).join(', '),
-      clave_jurado: limpiarTexto_(m.claveJurado, 60).replace(/[^\w-]/g, '') || ('jurado-' + Utilities.getUuid().slice(0, 6)),
-      max_jurados: num_(m.maxJurados, 0) > 0 ? Math.round(num_(m.maxJurados, 0)) : '',
-      campos_extra: serializarCampos_(m.campos),
-      una_por_correo: m.unaPorCorreo !== false,
-      aviso_minimo_horas: Math.max(0, num_(m.avisoMinimoHoras, 0)),
-      respetar_ocupado: !!m.respetarOcupado,
-      mostrar_invitados: !!m.mostrarInvitados,
-      recordatorio_horas: Math.max(0, num_(m.recordatorioHoras, 0)),
-      mensaje_confirmacion: limpiarTexto_(m.mensaje, 1000, true),
-    };
+    const valores = filaDesdeModelo_(m);
+    valores.id = id;
+    valores.titulo = titulo;
+    valores.duracion_min = duracion;
 
     let fila;
     if (existente) {
@@ -798,6 +880,7 @@ function menuCreador() {
 /** Ejecútala una vez desde el editor después de actualizar el código, para aprobar los permisos nuevos (Drive). */
 function autorizar() {
   DriveApp.getRootFolder();
+  UrlFetchApp.getRequest('https://www.google.com');
   claveAdmin_();
   console.log('Permisos listos. Clave de administración: ' + claveAdmin_());
 }
@@ -1155,12 +1238,22 @@ function unirInvitados_(lista) {
  * ========================================================================= */
 
 function enviarConfirmacion_(inst, r) {
+  enviarCorreo_(inst, r.correo, asuntoConfirmacion_(inst, r), htmlConfirmacion_(inst, r));
+}
+
+function asuntoConfirmacion_(inst, r) {
+  const e = etiquetaFecha_(r.clave.slice(0, 10));
+  return 'Confirmado: ' + inst.titulo + ' · ' + e.corta + ' ' + r.hora;
+}
+
+function htmlConfirmacion_(inst, r) {
   const e = etiquetaFecha_(r.clave.slice(0, 10));
   const tipo = tipoModalidad_(inst);
   let donde = '';
   if (tipo === 'meet') donde = r.link ? '<a href="' + esc_(r.link) + '">' + esc_(r.link) + '</a>' : 'Google Meet (el link está en la invitación de Calendar)';
   else if (tipo === 'link') donde = r.link ? '<a href="' + esc_(r.link) + '">' + esc_(r.link) + '</a>' : esc_(inst.modalidad);
-  else donde = esc_(inst.lugar || 'Presencial');
+  else donde = esc_(inst.lugar || 'Presencial') + (inst.lugar ? ' · <a href="https://www.google.com/maps/search/?api=1&amp;query=' +
+    encodeURIComponent(inst.lugar) + '" style="color:' + inst.color1 + ';font-weight:normal">Cómo llegar</a>' : '');
 
   const urlCancelar = urlPublica_() ? urlPublica_() + '?cancelar=' + r.token : '';
   let cuerpo = '<p style="margin:0 0 14px">Hola ' + esc_(primerNombre_(r.nombre)) + ',</p>' +
@@ -1175,7 +1268,7 @@ function enviarConfirmacion_(inst, r) {
     cuerpo += '<p style="margin:22px 0 0;font-size:13px;color:#555">¿No puedes asistir? Libera tu horario para que otra persona lo use y vuelve a agendar: ' +
       '<a href="' + esc_(urlCancelar) + '" style="color:' + inst.color1 + '">cancelar o cambiar mi horario</a>.</p>';
   }
-  enviarCorreo_(inst, r.correo, 'Confirmado: ' + inst.titulo + ' · ' + e.corta + ' ' + r.hora, plantillaCorreo_(inst, '¡Listo, tu horario quedó agendado!', cuerpo));
+  return plantillaCorreo_(inst, '¡Listo, tu horario quedó agendado!', cuerpo);
 }
 
 function enviarRecordatorio_(inst, r) {
@@ -1221,7 +1314,7 @@ function enviarCorreo_(inst, para, asunto, html) {
 
 function plantillaCorreo_(inst, titulo, cuerpo) {
   const logos = inst.logosCorreo.map(function (u) {
-    return '<img src="' + esc_(u) + '" alt="" height="40" style="height:40px;max-width:160px;margin:0 10px;vertical-align:middle">';
+    return '<img src="' + esc_(u) + '" alt="" height="36" style="height:36px;width:auto;max-width:140px;margin:4px 8px;vertical-align:middle">';
   }).join('');
   return '<div style="background:#f3f4f6;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#1f2933">' +
     '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden">' +

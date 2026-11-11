@@ -21,7 +21,9 @@
     return AP.api(accion, Object.assign({ clave: S.clave }, datos || {})).catch(function (err) {
       var e = AP.codigoError(err);
       if (e.codigo === 'CLAVE') { S.clave = null; AP.guardarLocal(CLAVE_LS, null); S.sucio = false; vistaEntrar(e.mensaje); }
-      throw new Error(e.mensaje);
+      var nuevo = new Error(e.mensaje);
+      nuevo.codigo = e.codigo;
+      throw nuevo;
     });
   }
 
@@ -60,6 +62,7 @@
         S.clave ? h('nav', null,
           h('a', { href: '#/' }, 'Tus agendas'),
           S.planilla ? h('a', { href: S.planilla, target: '_blank', rel: 'noopener' }, 'Abrir la planilla') : null,
+          h('button', { type: 'button', onclick: cambiarClave }, 'Cambiar clave'),
           h('button', { type: 'button', onclick: salir }, 'Salir')) : null)),
       h('main', { class: 'pagina' }, contenido)));
   }
@@ -70,6 +73,38 @@
     if (S.sucio && !window.confirm('Tienes cambios sin guardar. ¿Salir igual?')) return;
     S.sucio = false; S.clave = null; AP.guardarLocal(CLAVE_LS, null);
     vistaEntrar();
+  }
+
+  function cambiarClave() {
+    if (!window.confirm('Se creará una clave nueva y la actual dejará de funcionar en todos los navegadores donde se haya usado. ¿Seguir?')) return;
+    admin('admin.cambiarClave').then(function (r) {
+      S.clave = r.clave; AP.guardarLocal(CLAVE_LS, r.clave);
+      var link = AP.urlSitio() + 'admin.html#k=' + r.clave;
+      var dlg = h('dialog', { class: 'dlg', 'aria-label': 'Clave nueva' });
+      AP.pintar(dlg, h('div', { class: 'dlg-int' },
+        h('div', { class: 'dlg-cab' }, h('h2', null, 'Clave nueva lista')),
+        h('p', { class: 'ayuda', style: { margin: 0 } }, 'Este navegador ya quedó con la clave nueva. Guarda este link para entrar desde otro computador o celular; también lo encuentras en la planilla, en Agenda P!ensa, "Abrir el creador".'),
+        h('div', { class: 'linea' }, h('input', { class: 'inp', value: link, readonly: true, style: { flex: '1' }, onfocus: function (e) { e.target.select(); } }),
+          h('button', { class: 'b b-borde', type: 'button', onclick: function () { AP.copiar(link, 'Link del creador copiado.'); } }, 'Copiar')),
+        h('div', { class: 'dlg-pie' }, h('button', { class: 'b b-prin', type: 'button', onclick: function () { dlg.close(); dlg.remove(); } }, 'Listo'))));
+      document.body.appendChild(dlg);
+      dlg.showModal();
+    }).catch(function (err) { AP.avisar(err.message, true); });
+  }
+
+  function eliminarAgenda(id, titulo, cancelarFuturas) {
+    if (!cancelarFuturas && !window.confirm('¿Eliminar "' + titulo + '"? Se borran sus horarios y su lista de jurados, y el link deja de funcionar. Las reservas pasadas quedan en la planilla como historial.')) return;
+    admin('admin.eliminar', { e: id, cancelarFuturas: !!cancelarFuturas }).then(function (r) {
+      S.sucio = false;
+      AP.avisar('Agenda eliminada' + (r.canceladas ? '. Se cancelaron ' + r.canceladas + (r.canceladas === 1 ? ' hora y se avisó a la persona.' : ' horas y se avisó a cada persona.') : '.'));
+      if (location.hash === '#/' || location.hash === '') vistaLista(); else location.hash = '#/';
+    }).catch(function (err) {
+      if (err.codigo === 'RESERVAS') {
+        if (window.confirm(err.message + ' ¿Cancelarlas (le avisamos por correo a cada persona) y eliminar la agenda? Si prefieres no avisar a nadie, mejor cierra la agenda con el interruptor.')) eliminarAgenda(id, titulo, true);
+        return;
+      }
+      AP.avisar(err.message, true);
+    });
   }
 
   function vistaEntrar(error) {
@@ -148,7 +183,8 @@
         h('button', { class: 'b b-borde b-chico', type: 'button', onclick: function () { AP.copiar(linkReserva(a.id), 'Link para reservar copiado.'); } }, 'Copiar link'),
         a.claveJurado ? h('button', { class: 'b b-borde b-chico', type: 'button', onclick: function () { AP.copiar(linkJurado(a.id, a.claveJurado), 'Link del jurado copiado.'); } }, 'Copiar link del jurado') : null,
         h('a', { class: 'b b-borde b-chico', href: linkReserva(a.id), target: '_blank', rel: 'noopener' }, 'Ver página'),
-        h('a', { class: 'b b-borde b-chico', href: '#/nueva/' + encodeURIComponent(a.id) }, 'Duplicar')));
+        h('a', { class: 'b b-borde b-chico', href: '#/nueva/' + encodeURIComponent(a.id) }, 'Duplicar'),
+        h('button', { class: 'b b-texto b-chico', type: 'button', style: { color: 'var(--peligro)' }, onclick: function () { eliminarAgenda(a.id, a.titulo); } }, 'Eliminar')));
   }
 
   /* ---------- Editor ---------- */
@@ -157,8 +193,37 @@
     admin('admin.instancia', { e: id }).then(function (m) { iniciarEditor(m, false); }).catch(falla);
   }
 
+  var PLANTILLAS = [
+    { titulo: 'Entrevistas con jurado', cifra: '20', unidad: 'min', texto: 'Cada postulante elige una hora y el jurado se suma a las entrevistas desde su panel.',
+      aplicar: function (m) {
+        m.duracion = 20; m.modalidad = 'presencial'; m.recordatorioHoras = 24; m.avisoMinimoHoras = 12;
+        m.campos = [{ etiqueta: 'Teléfono (WhatsApp)', requerido: true, opciones: [] }, { etiqueta: 'Comuna', requerido: true, opciones: [] }];
+        m.descripcion = 'Elige la hora que más te acomode para tu entrevista. Al confirmar te llegará la invitación a tu correo.';
+        m.mensaje = 'Te recomendamos llegar 10 minutos antes.';
+      } },
+    { titulo: 'Reuniones uno a uno', cifra: '30', unidad: 'min', texto: 'Reuniones por videollamada con link de Google Meet automático, sin jurado.',
+      aplicar: function (m) {
+        m.duracion = 30; m.modalidad = 'meet'; m.recordatorioHoras = 24; m.avisoMinimoHoras = 2;
+        m.campos = [{ etiqueta: 'Institución u organización', requerido: true, opciones: [] }, { etiqueta: 'Tema que te gustaría conversar', requerido: false, opciones: [] }];
+        m.descripcion = 'Elige un horario para conversar. La invitación con el link de la videollamada te llegará al correo.';
+      } },
+    { titulo: 'En blanco', cifra: '+', unidad: '', texto: 'Parte de cero y configura todo a tu manera.', aplicar: function () {} },
+  ];
+
+  function vistaPlantillas() {
+    shell([
+      h('a', { class: 'volver', href: '#/' }, 'Volver a tus agendas'),
+      h('div', { class: 'pagina-cab' }, h('div', null, h('h1', null, 'Nueva agenda'), h('p', null, 'Elige un punto de partida. Todo se puede cambiar después.'))),
+      h('div', { class: 'plantillas' }, PLANTILLAS.map(function (p) {
+        return h('button', { class: 'plantilla', type: 'button', onclick: function () { var m = modeloNuevo(); p.aplicar(m); iniciarEditor(m, true); } },
+          h('span', { class: 'plantilla-cifra' }, h('b', null, p.cifra), p.unidad ? h('small', null, p.unidad) : null),
+          h('span', null, h('b', null, p.titulo), h('span', null, p.texto)));
+      }))
+    ]);
+  }
+
   function abrirNueva(desde) {
-    if (!desde) return iniciarEditor(modeloNuevo(), true);
+    if (!desde) return vistaPlantillas();
     cargando('Copiando la agenda…');
     admin('admin.instancia', { e: desde }).then(function (m) {
       m.id = ''; m.titulo = m.titulo + ' (copia)'; m.claveJurado = ''; m.autorizados = [];
@@ -207,10 +272,19 @@
     var m = S.modelo;
     E.horarios = h('div'); E.preguntas = h('div'); E.marca = h('div'); E.jurado = h('div'); E.formato = h('div');
     E.telefono = h('div', { class: 'telefono' });
+    E.escala = h('div', { class: 'escala' });
+    E.pantalla = h('div', { class: 'pantalla' }, E.escala);
+    E.asunto = h('div', { class: 'asunto' }, 'Cargando el correo…');
+    E.iframe = h('iframe', { title: 'Vista previa del correo', sandbox: '' });
+    E.correo = h('div', { class: 'correo-previa' }, E.asunto, E.iframe);
+    E.cuerpoPrevia = h('div');
+    S.modoPrevia = S.modoPrevia || 'celular';
+    E.tabs = h('div', { class: 'previa-tabs', role: 'group', 'aria-label': 'Tipo de vista previa' });
     E.previa = h('aside', { class: 'previa', 'aria-label': 'Vista previa' },
-      h('div', { class: 'previa-cab' }, h('div', null, h('b', null, 'Vista previa'), h('br'), h('span', null, 'Así se ve en un celular. Puedes probarla.')),
+      h('div', { class: 'previa-cab' }, E.tabs,
         h('button', { class: 'b b-borde b-chico abrir-previa', type: 'button', onclick: function () { E.previa.classList.remove('abierta'); } }, 'Cerrar')),
-      E.telefono);
+      E.cuerpoPrevia);
+    pintarTabs();
     E.msg = h('span', { class: 'msg' });
     E.btn = h('button', { class: 'b b-prin', type: 'button', onclick: guardar }, S.nueva ? 'Crear agenda' : 'Guardar cambios');
 
@@ -220,7 +294,9 @@
         h('h1', null, S.nueva ? 'Nueva agenda' : (m.titulo || 'Editar agenda')),
         h('p', null, S.nueva ? 'Completa lo básico, elige los días y revisa la vista previa antes de crearla.' : 'Los cambios se ven en la página apenas los guardas.'))),
       h('div', { class: 'editor' },
-        h('div', null, secBasico(), E.formato, secHorarios(), secPreguntas(), E.marca, E.jurado, secCorreos(), secReglas()),
+        h('div', null, secBasico(), E.formato, secHorarios(), secPreguntas(), E.marca, E.jurado, secCorreos(), secReglas(),
+          S.nueva ? null : panel('Eliminar agenda', 'Si solo quieres dejar de recibir reservas, apaga "Recibe reservas". Eliminar borra la agenda y su link deja de funcionar.',
+            h('button', { class: 'b b-peligro', type: 'button', style: { marginTop: '12px' }, onclick: function () { eliminarAgenda(m.id, m.titulo); } }, 'Eliminar esta agenda'))),
         E.previa),
       h('div', { class: 'guardar' }, h('div', { class: 'guardar-int' }, E.msg,
         h('button', { class: 'b b-borde abrir-previa', type: 'button', onclick: function () { E.previa.classList.add('abierta'); } }, 'Vista previa'),
@@ -484,45 +560,44 @@
     AP.pintar(E.logos, h('div', { class: 'logos-ed' }, slots.map(function (s) {
       var url = AP.urlImagen(m[s[0]]);
       var boton = h('span', { class: 'b b-borde b-chico subir' }, 'Subir imagen',
-        h('input', { type: 'file', accept: 'image/*', 'aria-label': 'Subir logo ' + s[1], onchange: function (e) { if (e.target.files[0]) subirLogo(e.target.files[0], s[0], boton); } }));
+        h('input', { type: 'file', accept: 'image/*', 'aria-label': 'Subir logo ' + s[1], onchange: function (e) {
+          var f = e.target.files[0]; e.target.value = '';
+          if (f) ajustarLogo({ archivo: f, nombre: f.name }, s[0], s[1]);
+        } }));
+      var ajustar = m[s[0]] ? h('button', { class: 'b b-borde b-chico', type: 'button', onclick: function () { ajustarDesdeLink(s[0], s[1], ajustar); } }, 'Ajustar') : null;
       return h('div', { class: 'logo-ed' },
         h('b', null, s[1]),
         h('div', { class: 'vista-logo', style: m.logosFondo === 'color' ? { background: m.color1, color: AP.textoSobre(m.color1) } : { background: '#fff', boxShadow: 'inset 0 0 0 1px var(--linea)' } },
           url ? h('img', { src: url, alt: '', onerror: function () { this.replaceWith(h('em', null, 'No se pudo cargar')); } }) : h('em', null, 'Sin logo')),
-        h('div', { class: 'linea', style: { gap: '6px' } }, boton,
+        h('div', { class: 'linea', style: { gap: '6px' } }, boton, ajustar,
           m[s[0]] ? h('button', { class: 'b b-texto b-chico', type: 'button', onclick: function () { m[s[0]] = ''; cambio(); pintarLogos(); } }, 'Quitar') : null),
         h('input', { class: 'inp', value: m[s[0]] || '', placeholder: 'o pega un link (Drive o web)', 'aria-label': 'Link del logo ' + s[1],
           onchange: function (e) { m[s[0]] = e.target.value.trim(); cambio(); pintarLogos(); } }));
     })));
   }
 
-  function subirLogo(archivo, clave, boton) {
-    if (!/^image\//.test(archivo.type)) return AP.avisar('Elige una imagen (PNG, JPG o SVG).', true);
-    boton.firstChild.textContent = 'Subiendo…';
-    aPng(archivo).then(function (base64) {
-      return admin('admin.logo', { nombre: archivo.name.replace(/\.[^.]+$/, '') + '.png', tipo: 'image/png', base64: base64 });
-    }).then(function (r) {
-      S.modelo[clave] = r.url; cambio(); pintarLogos();
-      AP.avisar('Logo subido. Guarda los cambios para usarlo.');
-    }).catch(function (err) { boton.firstChild.textContent = 'Subir imagen'; AP.avisar(err.message, true); });
+  function ajustarDesdeLink(clave, nombre, boton) {
+    var actual = String(S.modelo[clave] || '');
+    if (/^data:image\//.test(actual)) return ajustarLogo({ dataUrl: actual, nombre: clave + '.png' }, clave, nombre);
+    boton.textContent = 'Abriendo…';
+    admin('admin.logoDatos', { url: S.modelo[clave] }).then(function (r) {
+      boton.textContent = 'Ajustar';
+      ajustarLogo({ dataUrl: 'data:' + r.tipo + ';base64,' + r.base64, nombre: clave + '.png' }, clave, nombre);
+    }).catch(function (err) { boton.textContent = 'Ajustar'; AP.avisar(err.message, true); });
   }
 
-  function aPng(archivo) {
-    return new Promise(function (ok, mal) {
-      var url = URL.createObjectURL(archivo);
-      var img = new Image();
-      img.onload = function () {
-        var w = img.naturalWidth || 800, alto = img.naturalHeight || 300;
-        var k = Math.min(1, 900 / w, 320 / alto);
-        var c = document.createElement('canvas');
-        c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(alto * k));
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        ok(c.toDataURL('image/png').split(',')[1]);
-      };
-      img.onerror = function () { URL.revokeObjectURL(url); mal(new Error('No pudimos leer esa imagen. Prueba con un PNG o JPG.')); };
-      img.src = url;
-    });
+  function ajustarLogo(fuente, clave, nombre) {
+    if (fuente.archivo && !/^image\//.test(fuente.archivo.type)) return AP.avisar('Elige una imagen (PNG, JPG o SVG).', true);
+    AP.editorLogo(fuente, { color1: S.modelo.color1, titulo: 'Ajustar logo: ' + nombre }).then(function (r) {
+      if (!r) return;
+      AP.avisar('Subiendo el logo…');
+      return admin('admin.logo', { nombre: String(fuente.nombre || 'logo').replace(/\.[^.]+$/, '') + '.png', tipo: 'image/png', base64: r.base64 }).then(function (res) {
+        S.modelo[clave] = res.url;
+        if (r.blanco && S.modelo.logosFondo !== 'color') { S.modelo.logosFondo = 'color'; AP.avisar('Logo listo. Como es blanco, lo dejé directo sobre el color. Guarda los cambios para usarlo.'); }
+        else AP.avisar('Logo listo. Guarda los cambios para usarlo.');
+        cambio(); pintarMarca();
+      });
+    }).catch(function (err) { AP.avisar(err.message, true); });
   }
 
   /* 6. Jurado */
@@ -596,10 +671,15 @@
   }
 
   /* Vista previa */
-  function pintarPrevia() {
+  function pintarTabs() {
+    AP.pintar(E.tabs, [['celular', 'Celular'], ['computador', 'Computador'], ['correo', 'Correo']].map(function (t) {
+      return h('button', { type: 'button', 'aria-pressed': String(S.modoPrevia === t[0]), onclick: function () { S.modoPrevia = t[0]; pintarTabs(); pintarPrevia(); } }, t[1]);
+    }));
+  }
+
+  function instanciaPrevia() {
     var m = S.modelo;
-    if (!E.telefono) return;
-    var inst = {
+    return {
       id: m.id || 'vista-previa', titulo: m.titulo || 'Título de la agenda', subtitulo: m.subtitulo, descripcion: m.descripcion,
       duracion: Math.max(5, +m.duracion || 20), tipo: m.modalidad, modalidad: m.modalidad, lugar: m.modalidad === 'presencial' ? m.lugar : '',
       color1: m.color1, color2: m.color2, logosFondo: m.logosFondo, contacto: m.responderA,
@@ -608,9 +688,35 @@
         return { id: 'c' + i, etiqueta: c.etiqueta.trim(), requerido: c.requerido, opciones: c.opciones || [] };
       }),
     };
-    var arriba = E.telefono.scrollTop;
-    AP.vista.reserva(E.telefono, { instancia: inst, dias: AP.calcularDias(m.horarios, m.duracion, m.pausa) }, { preview: true });
-    E.telefono.scrollTop = arriba;
+  }
+
+  function pintarPrevia() {
+    if (!E.cuerpoPrevia) return;
+    var m = S.modelo;
+    var datos = { instancia: instanciaPrevia(), dias: AP.calcularDias(m.horarios, m.duracion, m.pausa) };
+    if (S.modoPrevia === 'computador') {
+      if (E.cuerpoPrevia.firstChild !== E.pantalla) AP.pintar(E.cuerpoPrevia, E.pantalla, h('div', { class: 'pie-pantalla' }));
+      AP.vista.reserva(E.escala, datos, { preview: true });
+      var k = (392 - 16) / 1200;
+      E.escala.style.transform = 'scale(' + k + ')';
+      E.pantalla.style.height = Math.round(780 * k + 16) + 'px';
+    } else if (S.modoPrevia === 'correo') {
+      if (E.cuerpoPrevia.firstChild !== E.correo) AP.pintar(E.cuerpoPrevia, E.correo, h('p', { class: 'ayuda', style: { textAlign: 'center', marginTop: '8px' } }, 'Correo de ejemplo con los cambios que estás haciendo.'));
+      clearTimeout(S.tCorreo);
+      S.tCorreo = setTimeout(function () {
+        var pedido = ++S.nCorreo || (S.nCorreo = 1);
+        admin('admin.previaCorreo', { instancia: JSON.parse(JSON.stringify(m)) }).then(function (r) {
+          if (pedido !== S.nCorreo) return;
+          E.asunto.textContent = 'Asunto: ' + r.asunto;
+          E.iframe.srcdoc = r.html;
+        }).catch(function (err) { E.asunto.textContent = err.message; });
+      }, 600);
+    } else {
+      if (E.cuerpoPrevia.firstChild !== E.telefono) AP.pintar(E.cuerpoPrevia, E.telefono);
+      var arriba = E.telefono.scrollTop;
+      AP.vista.reserva(E.telefono, datos, { preview: true });
+      E.telefono.scrollTop = arriba;
+    }
   }
 
   /* Guardar */

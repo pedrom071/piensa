@@ -31,9 +31,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* Panel de marca */
 .marca { background: var(--c1); color: var(--t1); padding: 20px 20px 22px; display: flex; flex-direction: column; gap: 12px; }
-.logos { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
-.logos.en-placa { background: var(--blanco); border-radius: 16px; padding: 12px 16px; align-self: flex-start; max-width: 100%; }
-.logos img { height: 36px; width: auto; max-width: 150px; object-fit: contain; display: block; }
+.logos { display: flex; flex-wrap: nowrap; align-items: center; gap: 14px; max-width: 100%; }
+.logos.en-placa { background: var(--blanco); border-radius: 16px; padding: 12px 16px; align-self: flex-start; }
+.logos img { height: 34px; width: auto; min-width: 0; max-width: 150px; flex: 0 1 auto; object-fit: contain; display: block; }
+.logos.n3 img { max-width: 30%; }
+.logos .sep { flex: 0 0 1px; align-self: stretch; background: currentColor; opacity: .25; margin: 2px 0; }
+.logos.en-placa .sep { background: #1a2130; opacity: .14; }
 .marca-sub { margin: 4px 0 0; font-size: 14px; opacity: .82; font-weight: 500; }
 .marca h1 { font-family: var(--display); font-weight: 750; font-size: 26px; line-height: 1.08; letter-spacing: -.015em; margin: 0; text-wrap: balance; }
 .marca-desc { margin: 0; font-size: 15px; line-height: 1.55; opacity: .92; max-width: 46ch; white-space: pre-line; }
@@ -160,7 +163,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .marca .marca-pie { display: block; }
   .agenda-grid { grid-template-columns: minmax(330px, 34%) 1fr; }
   .marca { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 44px 40px 30px; gap: 18px; }
-  .logos img { height: 44px; max-width: 170px; }
+  .logos { gap: 18px; }
+  .logos img { height: 42px; max-width: 170px; }
+  .logos.n3 img { max-width: 31%; }
   .marca h1 { font-size: 40px; }
   .flujo { padding: 52px 56px 60px; }
   .paso h2 { font-size: 26px; }

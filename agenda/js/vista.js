@@ -15,8 +15,11 @@
     var raizAgenda = h('div', { class: 'agenda' },
       h('div', { class: 'agenda-grid' },
         h('aside', { class: 'marca' },
-          logos.length ? h('div', { class: 'logos' + (inst.logosFondo === 'color' ? '' : ' en-placa') },
-            logos.map(function (u) { return h('img', { src: u, alt: '', loading: 'lazy', onerror: function () { this.remove(); } }); })) : null,
+          logos.length ? h('div', { class: 'logos' + (inst.logosFondo === 'color' ? '' : ' en-placa') + ' n' + logos.length },
+            logos.map(function (u, i) {
+              return [i ? h('span', { class: 'sep', 'aria-hidden': 'true' }) : null,
+                h('img', { src: u, alt: '', onerror: quitarLogo })];
+            })) : null,
           inst.subtitulo ? h('p', { class: 'marca-sub' }, inst.subtitulo) : null,
           h('h1', null, inst.titulo || 'Agenda P!ensa'),
           inst.descripcion && datos !== false && !sinDescripcion ? h('p', { class: 'marca-desc' }, inst.descripcion) : null,
@@ -26,6 +29,15 @@
     AP.aplicarMarca(raizAgenda, inst);
     AP.pintar(raiz, raizAgenda);
     return flujo;
+  }
+
+  function quitarLogo() {
+    var antes = this.previousElementSibling, despues = this.nextElementSibling;
+    if (antes && antes.classList.contains('sep')) antes.remove();
+    else if (despues && despues.classList.contains('sep')) despues.remove();
+    var caja = this.parentNode;
+    this.remove();
+    if (caja && !caja.querySelector('img')) caja.remove();
   }
 
   function dato(titulo, valor) { return h('div', null, h('dt', null, titulo), h('dd', null, valor)); }
@@ -87,11 +99,12 @@
           h('h2', null, '¿Qué día te acomoda?'),
           h('div', { class: 'dias', role: 'group', 'aria-label': 'Días disponibles' }, datos.dias.map(function (d) {
             var p = AP.partesFecha(d.fecha);
+            var cuando = d.fecha === AP.hoyChile() ? 'hoy' : (d.fecha === AP.hoyChile(1) ? 'mañana' : p.dow);
             return h('button', {
               class: 'dia', type: 'button', 'aria-pressed': String(d.fecha === est.dia), disabled: d.libres === 0,
               'aria-label': p.larga + ', ' + (d.libres ? d.libres + ' horarios libres' : 'sin horarios'),
               onclick: function () { est.dia = d.fecha; est.bloque = null; est.error = ''; render(); }
-            }, h('span', { class: 'dow' }, p.dow), h('span', { class: 'num' }, p.num), h('span', { class: 'mes' }, p.mes),
+            }, h('span', { class: 'dow' }, cuando), h('span', { class: 'num' }, p.num), h('span', { class: 'mes' }, p.mes),
               h('span', { class: 'libres' }, d.libres === 0 ? 'completo' : d.libres + (d.libres === 1 ? ' libre' : ' libres')));
           }))),
         dia ? h('section', { class: 'paso' },

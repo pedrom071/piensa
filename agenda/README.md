@@ -16,12 +16,20 @@ Agendamiento de entrevistas y reuniones de Fundación P!ensa.
 4. **Implementar → Gestionar implementaciones → lápiz → Versión: Nueva versión → Implementar**. Así la dirección de la app no cambia.
 5. Recarga la planilla y usa **Agenda P!ensa → Abrir el creador** para obtener tu link con clave.
 
+## Seguridad
+
+- `admin.html` se puede abrir, pero sin la clave de administración solo muestra la pantalla para entrar. Cada acción del creador se verifica en Apps Script con esa clave.
+- La clave queda guardada en el navegador donde abriste el link del creador. "Salir" la borra de ese navegador; "Cambiar clave" crea una nueva y deja sin efecto la anterior en todos lados.
+- El link del jurado solo abre el panel del jurado de esa agenda. La página de reserva no muestra nombres de nadie.
+- Este repositorio no guarda datos ni claves: las reservas están en la planilla y la clave en las propiedades del script.
+
 ## Archivos
 
 | Archivo | Qué hace |
 |---|---|
 | `index.html`, `js/publico.js` | Página pública: reservar, panel del jurado y cancelar |
 | `admin.html`, `js/creador.js`, `css/creador.css` | Creador |
+| `js/logos.js` | Editor de logos: quitar fondo, recortar márgenes, versión blanca |
 | `js/vista.js`, `css/agenda.css` | Pantallas de la agenda (también se usan en la vista previa del creador) |
 | `js/comun.js` | Utilidades y conexión con el motor |
 | `js/config.js` | Dirección de la app de Apps Script |

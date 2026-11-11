@@ -82,6 +82,11 @@
     };
   };
 
+  AP.hoyChile = function (sumar) {
+    var d = new Date(Date.now() + (sumar || 0) * 86400000);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(d);
+  };
+
   AP.aMin = function (hhmm) { var p = String(hhmm).split(':'); return (+p[0]) * 60 + (+p[1]); };
   AP.deMin = function (n) { return ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2); };
 

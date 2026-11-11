@@ -1,6 +1,7 @@
 /* Agenda P!ensa — creador (administración). Usa las variables de agenda.css. */
 
-.creador { --ui: #1d2b4f; --ui-t: #ffffff; --ui-tinte: rgba(29, 43, 79, .08); min-height: 100vh; background: var(--papel); }
+:root { --ui: #1d2b4f; --ui-t: #ffffff; --ui-tinte: rgba(29, 43, 79, .08); }
+.creador { min-height: 100vh; background: var(--papel); }
 .barra { position: sticky; top: 0; z-index: 20; background: var(--blanco); border-bottom: 1px solid var(--linea); }
 .barra-int { max-width: 1320px; margin: 0 auto; display: flex; align-items: center; gap: 18px; padding: 12px 22px; }
 .marca-app { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -.01em; color: var(--ui); text-decoration: none; }
@@ -184,4 +185,58 @@
   .tabla-ed .fila-ed { grid-template-columns: 1fr 1fr; }
   .pagina-cab h1 { font-size: 27px; }
   .tabla { display: block; overflow-x: auto; }
+}
+
+/* Plantillas */
+.plantillas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.plantilla { text-align: left; background: var(--blanco); border: 1.5px solid var(--linea); border-radius: 20px; padding: 18px; cursor: pointer;
+  display: grid; grid-template-columns: 74px 1fr; gap: 16px; align-items: center; transition: border-color .15s; }
+.plantilla:hover { border-color: var(--ui); }
+.plantilla-cifra { width: 74px; height: 74px; border-radius: 16px; background: var(--ui); color: var(--ui-t); display: grid; place-content: center; text-align: center; line-height: 1; }
+.plantilla-cifra b { font-family: var(--display); font-size: 32px; font-weight: 800; }
+.plantilla-cifra small { font-size: 12px; opacity: .85; }
+.plantilla > span:last-child b { display: block; font-family: var(--display); font-size: 19px; margin-bottom: 4px; }
+.plantilla > span:last-child span { color: var(--gris); font-size: 14px; line-height: 1.45; }
+
+/* Diálogos */
+.dlg { border: 0; border-radius: 22px; padding: 0; width: min(780px, 94vw); max-height: 92vh; box-shadow: 0 30px 80px rgba(10, 15, 30, .35); color: var(--tinta); }
+.dlg::backdrop { background: rgba(20, 26, 40, .55); }
+.dlg-int { padding: 22px 24px; display: grid; gap: 14px; }
+.dlg-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dlg-cab h2 { font-family: var(--display); margin: 0; font-size: 24px; letter-spacing: -.01em; }
+.dlg-x { border: 0; background: #f1f2f5; width: 36px; height: 36px; border-radius: 10px; font-size: 22px; line-height: 1; cursor: pointer; }
+.dlg-vistas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.dlg-vistas figure { margin: 0; }
+.dlg-vistas .v { height: 124px; border-radius: 14px; display: grid; place-items: center; padding: 14px; box-shadow: inset 0 0 0 1px var(--linea); }
+.dlg-vistas img { max-width: 100%; max-height: 92px; object-fit: contain; }
+.dlg-vistas figcaption { font-size: 12.5px; color: var(--gris); margin-top: 6px; text-align: center; }
+.tablero { background-color: #fff; background-image: linear-gradient(45deg, #e6e8ec 25%, transparent 25%), linear-gradient(-45deg, #e6e8ec 25%, transparent 25%),
+  linear-gradient(45deg, transparent 75%, #e6e8ec 75%), linear-gradient(-45deg, transparent 75%, #e6e8ec 75%);
+  background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0; }
+.dlg-ops .toggle-fila { margin-top: 12px; }
+.dlg-ops .sens { margin: 10px 0 0 52px; }
+.dlg-ops input[type=range] { width: 100%; accent-color: var(--ui); }
+.muestra-color { display: inline-block; width: 13px; height: 13px; border-radius: 4px; vertical-align: -2px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); margin: 0 5px 0 2px; }
+.dlg-pie { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+
+/* Vista previa: pestañas, computador y correo */
+.previa-cab { gap: 10px; }
+.previa-tabs { display: inline-flex; background: #e9ebef; border-radius: 11px; padding: 3px; gap: 2px; }
+.previa-tabs button { border: 0; background: transparent; font-weight: 600; font-size: 13.5px; padding: 7px 12px; border-radius: 8px; cursor: pointer; color: #3b4555; }
+.previa-tabs button[aria-pressed="true"] { background: #fff; color: var(--ui); box-shadow: 0 1px 2px rgba(20, 30, 50, .12); }
+.pantalla { width: 392px; border: 8px solid #1a2130; border-radius: 14px; overflow: hidden; background: var(--papel); margin: 0 auto; }
+.pantalla .escala { width: 1200px; height: 780px; transform-origin: 0 0; overflow: hidden; }
+.pantalla .escala .agenda-grid .marca { position: static; height: 780px; }
+.pie-pantalla { width: 130px; height: 12px; background: #1a2130; margin: 0 auto; border-radius: 0 0 10px 10px; }
+.correo-previa { width: 392px; margin: 0 auto; border-radius: 16px; overflow: hidden; border: 1px solid var(--linea); background: #fff; }
+.correo-previa .asunto { padding: 10px 14px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--linea); }
+.correo-previa iframe { width: 100%; height: min(660px, calc(100vh - 210px)); border: 0; display: block; background: #f3f4f6; }
+
+@media (max-width: 1179px) {
+  .previa-tabs { background: rgba(255, 255, 255, .9); }
+}
+@media (max-width: 760px) {
+  .plantillas, .dlg-vistas { grid-template-columns: 1fr; }
+  .dlg-vistas .v { height: 96px; }
+  .dlg-ops .sens { margin-left: 0; }
 }
